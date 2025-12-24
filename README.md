@@ -9,7 +9,10 @@ Score as many points as you can in **60 seconds**!
 ---
 
 ## ✅ Play the Game
-👉 [Click here to play](https://ВАШ-ЛОГИН.github.io/match3-game/)  
+👉 [Click here to play](
+## ✅ Play the Game
+👉 https://stasekstudio.github.io/match3-game-Lana/
+)  
 
 ---
 
