@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Match 3 — Time Attack</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+        margin: 0;
+        padding: 0;
+    }
+    h1 { color: #fff; margin-top: 20px; }
+    #rules {
+        color: #fff;
+        font-size: 16px;
+        margin: 10px auto;
+        max-width: 400px;
+    }
+    #game-board {
+        display: grid;
+        grid-template-columns: repeat(8, 50px);
+        gap: 5px;
+        justify-content: center;
+        margin: 20px auto;
+    }
+    .circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: opacity 0.5s ease;
+    }
+    .fade {
+        opacity: 0;
+    }
+    #info { font-size: 18px; margin: 10px; color: #fff; }
+    #result { font-size: 24px; font-weight: bold; margin-top: 20px; color: #fff; }
+    #footer { margin-top: 30px; font-size: 16px; color: #fff; }
+    button {
+        padding: 10px 20px;
+        font-size: 18px;
+        margin-top: 15px;
+        cursor: pointer;
+        background: #fff;
+        border: none;
+        border-radius: 8px;
+    }
+    .selected {
+        border: 3px solid #000;
+    }
+    /* Firework effect */
+    .firework {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle, #fff, transparent);
+        animation: explode 1s ease-out forwards;
+        pointer-events: none;
+    }
+    @keyframes explode {
+        0% { transform: scale(0); opacity: 1; }
+        100% { transform: scale(5); opacity: 0; }
+    }
+</style>
+</head>
+<body>
+<h1>Match 3 — Time Attack</h1>
+<div id="rules">
+    Swap two neighboring circles.<br>
+    Match 3+ of the same color in a row or column.<br>
+    Matches disappear and new circles fall down.<br>
+    Score as many points as you can in 60 seconds.
+</div>
+<div id="info">
+    Time: <span id="time">60</span> sec | Score: <span id="score">0</span>
+</div>
+<div id="game-board"></div>
+<div id="result"></div>
+<button onclick="startGame()">Restart</button>
+<div id="footer">Game created by Lana Genius</div>
+
+<!-- Sounds -->
+<audio id="moveSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<audio id="matchSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+<audio id="booSound" src="https://actions.google.com/sounds/v1/human_voices/boo.ogg"></audio>
+<audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg"></audio>
+
+<script>
+const boardSize = 8;
+const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+let score = 0;
+let timeLeft = 60;
+let timer;
+let gameActive = false;
+let selected = null;
+
+function createBoard() {
+    const board = document.getElementById('game-board');
+    board.innerHTML = '';
+    for (let i = 0; i < boardSize * boardSize; i++) {
+        const circle = document.createElement('div');
+        circle.className = 'circle';
+        circle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        circle.dataset.index = i;
+        board.appendChild(circle);
+    }
+}
+
+function startGame() {
+    score = 0;
+    timeLeft = 60;
+    gameActive = true;
+    document.getElementById('score').textContent = score;
+    document.getElementById('time').textContent = timeLeft;
+    document.getElementById('result').textContent = '';
+    createBoard();
+    clearInterval(timer);
+    timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('time').textContent = timeLeft;
+        if (timeLeft <= 0) endGame();
+    }, 1000);
+}
+
+function endGame() {
+    clearInterval(timer);
+    gameActive = false;
+
+    let message = '';
+    const badMsgs = ['Think faster!', 'Move your fingers!', 'Are you asleep?', 'Pathetic speed!'];
+    const midMsgs = ['You can do better!', 'Not bad, but too slow!', 'Try harder next time!'];
+    const goodMsgs = ['Awesome! You are a machine!', 'Fire speed!', 'Unstoppable!'];
+
+    if (score <= 20) {
+        message = badMsgs[Math.floor(Math.random() * badMsgs.length)];
+        document.getElementById('booSound').play();
+    } else if (score <= 80) {
+        message = midMsgs[Math.floor(Math.random() * midMsgs.length)];
+    } else {
+        message = goodMsgs[Math.floor(Math.random() * goodMsgs.length)];
+        document.getElementById('winSound').play();
+        showFirework();
+    }
+
+    document.getElementById('result').textContent = `Time’s up! Score: ${score}. ${message}`;
+}
+
+function showFirework() {
+    const fw = document.createElement('div');
+    fw.className = 'firework';
+    document.body.appendChild(fw);
+    setTimeout(() => fw.remove(), 1000);
+}
+
+function swapCircles(first, second) {
+    const tempColor = first.style.backgroundColor;
+    first.style.backgroundColor = second.style.backgroundColor;
+    second.style.backgroundColor = tempColor;
+}
+
+function checkMatches() {
+    const board = document.querySelectorAll('.circle');
+    let matched = [];
+    let groups = 0;
+
+    // Check rows
+    for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize - 2; c++) {
+            const idx = r * boardSize + c;
+            const color = board[idx].style.backgroundColor;
+            if (color && color !== '' &&
+                color === board[idx + 1].style.backgroundColor &&
+                color === board[idx + 2].style.backgroundColor) {
+                matched.push(idx, idx + 1, idx + 2);
+                groups++;
+            }
+        }
+    }
+
+    // Check columns
+    for (let c = 0; c < boardSize; c++) {
+        for (let r = 0; r < boardSize - 2; r++) {
+            const idx = r * boardSize + c;
+            const color = board[idx].style.backgroundColor;
+            if (color && color !== '' &&
+                color === board[idx + boardSize].style.backgroundColor &&
+                color === board[idx + 2 * boardSize].style.backgroundColor) {
+                matched.push(idx, idx + boardSize, idx + 2 * boardSize);
+                groups++;
+            }
+        }
+    }
+
+    matched = [...new Set(matched)];
+    if (matched.length > 0) {
+        score += groups * 2; // +2 points per group
+        document.getElementById('score').textContent = score;
+        document.getElementById('matchSound').play();
+        matched.forEach(i => {
+            board[i].classList.add('fade');
+            setTimeout(() => board[i].style.backgroundColor = '', 500);
+        });
+        setTimeout(() => dropCircles(board), 600);
+    }
+}
+
+function dropCircles(board) {
+    for (let c = 0; c < boardSize; c++) {
+        let colorsInColumn = [];
+        for (let r = boardSize - 1; r >= 0; r--) {
+            const idx = r * boardSize + c;
+            const color = board[idx].style.backgroundColor;
+            if (color && color !== '') {
+                colorsInColumn.push(color);
+            }
+        }
+        for (let r = boardSize - 1; r >= 0; r--) {
+            const idx = r * boardSize + c;
+            if (colorsInColumn.length > 0) {
+                board[idx].style.backgroundColor = colorsInColumn.shift();
+                board[idx].classList.remove('fade');
+            } else {
+                board[idx].style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                board[idx].classList.remove('fade');
+            }
+        }
+    }
+}
+
+document.getElementById('game-board').addEventListener('click', e => {
+    if (!gameActive || !e.target.classList.contains('circle')) return;
+    if (!selected) {
+        selected = e.target;
+        selected.classList.add('selected');
+    } else {
+        const second = e.target;
+        const firstIndex = parseInt(selected.dataset.index);
+        const secondIndex = parseInt(second.dataset.index);
+        const diff = Math.abs(firstIndex - secondIndex);
+        if ((diff === 1 && Math.floor(firstIndex / boardSize) === Math.floor(secondIndex / boardSize)) || diff === boardSize) {
+            swapCircles(selected, second);
+            score += 1; // +1 point per move
+            document.getElementById('score').textContent = score;
+            document.getElementById('moveSound').play();
+            checkMatches();
+        }
+        selected.classList.remove('selected');
+        selected = null;
+    }
+});
+
+startGame();
+</script>
+</body>
+</html>
