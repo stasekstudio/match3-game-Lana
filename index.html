@@ -20,20 +20,31 @@
     }
     #game-board {
         display: grid;
-        grid-template-columns: repeat(8, 50px);
-        gap: 5px;
+        grid-template-columns: repeat(8, minmax(5vw, 50px));
+        gap: 1vw;
         justify-content: center;
         margin: 20px auto;
+        position: relative;
     }
     .circle {
-        width: 50px;
-        height: 50px;
+        width: 5vw;
+        height: 5vw;
         border-radius: 50%;
         cursor: pointer;
         transition: opacity 0.5s ease;
+        position: relative;
     }
     .fade {
         opacity: 0;
+    }
+    @media (max-width: 600px) {
+        #game-board {
+            grid-template-columns: repeat(6, minmax(12vw, 50px));
+        }
+        .circle {
+            width: 12vw;
+            height: 12vw;
+        }
     }
     #info { font-size: 18px; margin: 10px; color: #fff; }
     #result { font-size: 24px; font-weight: bold; margin-top: 20px; color: #fff; }
@@ -65,6 +76,19 @@
         0% { transform: scale(0); opacity: 1; }
         100% { transform: scale(5); opacity: 0; }
     }
+    /* Floating score */
+    .float-score {
+        position: absolute;
+        color: #fff;
+        font-weight: bold;
+        font-size: 18px;
+        animation: floatUp 1s ease-out forwards;
+        pointer-events: none;
+    }
+    @keyframes floatUp {
+        0% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-40px); }
+    }
 </style>
 </head>
 <body>
@@ -82,12 +106,6 @@
 <div id="result"></div>
 <button onclick="startGame()">Restart</button>
 <div id="footer">Game created by Lana Genius</div>
-
-<!-- Sounds -->
-<audio id="moveSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
-<audio id="matchSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
-<audio id="booSound" src="https://actions.google.com/sounds/v1/human_voices/boo.ogg"></audio>
-<audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg"></audio>
 
 <script>
 const boardSize = 8;
@@ -130,19 +148,19 @@ function endGame() {
     clearInterval(timer);
     gameActive = false;
 
-    let message = '';
     const badMsgs = ['Think faster!', 'Move your fingers!', 'Are you asleep?', 'Pathetic speed!'];
     const midMsgs = ['You can do better!', 'Not bad, but too slow!', 'Try harder next time!'];
-    const goodMsgs = ['Awesome! You are a machine!', 'Fire speed!', 'Unstoppable!'];
+    const goodMsgs = ['Awesome! You are a machine!', 'Fire speed!', 'Unstoppable!', 'Legendary!'];
 
+    let message = '';
     if (score <= 20) {
         message = badMsgs[Math.floor(Math.random() * badMsgs.length)];
-        document.getElementById('booSound').play();
+        playSound('boo');
     } else if (score <= 80) {
         message = midMsgs[Math.floor(Math.random() * midMsgs.length)];
     } else {
         message = goodMsgs[Math.floor(Math.random() * goodMsgs.length)];
-        document.getElementById('winSound').play();
+        playSound('win');
         showFirework();
     }
 
@@ -154,6 +172,25 @@ function showFirework() {
     fw.className = 'firework';
     document.body.appendChild(fw);
     setTimeout(() => fw.remove(), 1000);
+}
+
+function playSound(type) {
+    const audio = new Audio(type === 'boo' 
+        ? 'https://actions.google.com/sounds/v1/human_voices/boo.ogg' 
+        : type === 'win'
+        ? 'https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg'
+        : 'https://actions.google.com/sounds/v1/cartoon/pop.ogg'); // default for move/match
+    audio.play();
+}
+
+function showFloatingScore(text, x, y) {
+    const float = document.createElement('div');
+    float.className = 'float-score';
+    float.textContent = text;
+    float.style.left = x + 'px';
+    float.style.top = y + 'px';
+    document.getElementById('game-board').appendChild(float);
+    setTimeout(() => float.remove(), 1000);
 }
 
 function swapCircles(first, second) {
@@ -199,7 +236,9 @@ function checkMatches() {
     if (matched.length > 0) {
         score += groups * 2; // +2 points per group
         document.getElementById('score').textContent = score;
-        document.getElementById('matchSound').play();
+        playSound('match');
+        const rect = document.getElementById('game-board').getBoundingClientRect();
+        showFloatingScore(`+${groups * 2}`, rect.width / 2, rect.height / 2);
         matched.forEach(i => {
             board[i].classList.add('fade');
             setTimeout(() => board[i].style.backgroundColor = '', 500);
@@ -245,7 +284,9 @@ document.getElementById('game-board').addEventListener('click', e => {
             swapCircles(selected, second);
             score += 1; // +1 point per move
             document.getElementById('score').textContent = score;
-            document.getElementById('moveSound').play();
+            playSound('move');
+            const rect = e.target.getBoundingClientRect();
+            showFloatingScore('+1', rect.left - rect.width / 2, rect.top - rect.height / 2);
             checkMatches();
         }
         selected.classList.remove('selected');
